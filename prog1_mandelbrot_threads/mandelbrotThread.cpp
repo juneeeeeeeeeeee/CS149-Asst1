@@ -8,6 +8,8 @@ typedef struct {
     float y0, y1;
     unsigned int width;
     unsigned int height;
+    unsigned int startRow;
+    unsigned int numRows;
     int maxIterations;
     int* output;
     int threadId;
@@ -34,8 +36,8 @@ void workerThreadStart(WorkerArgs * const args) {
     // to compute a part of the output image.  For example, in a
     // program that uses two threads, thread 0 could compute the top
     // half of the image and thread 1 could compute the bottom half.
-
-    printf("Hello world from thread %d\n", args->threadId);
+    mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, args->startRow, args->numRows, args->maxIterations, args->output);
+    // printf("Hello world from thread %d\n", args->threadId);
 }
 
 //
@@ -72,10 +74,13 @@ void mandelbrotThread(
         args[i].y1 = y1;
         args[i].width = width;
         args[i].height = height;
+        args[i].startRow = i * (height / numThreads);
+        args[i].numRows = height / numThreads;
+        if (i == numThreads - 1) args[i].numRows += height % numThreads; // last rows
         args[i].maxIterations = maxIterations;
         args[i].numThreads = numThreads;
         args[i].output = output;
-      
+        
         args[i].threadId = i;
     }
 

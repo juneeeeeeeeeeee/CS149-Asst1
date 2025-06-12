@@ -142,31 +142,35 @@ int main(int argc, char** argv) {
     //
     // Run the threaded version
     //
+    for(;numThreads <= 8; numThreads++)
+    {
+        double minThread = 1e30;
+        for (int i = 0; i < 5; ++i) {
+        memset(output_thread, 0, width * height * sizeof(int));
+            double startTime = CycleTimer::currentSeconds();
+            mandelbrotThread(numThreads, x0, y0, x1, y1, width, height, maxIterations, output_thread);
+            double endTime = CycleTimer::currentSeconds();
+            minThread = std::min(minThread, endTime - startTime);
+        }
+        /*printf("[mandelbrot thread]:\t\t[%.3f] ms\n", minThread * 1000);
+        writePPMImage(output_thread, width, height, "mandelbrot-thread.ppm", maxIterations);
+        */
+        if (! verifyResult (output_serial, output_thread, width, height)) {
+            printf ("Error : Output from threads does not match serial output\n");
 
-    double minThread = 1e30;
-    for (int i = 0; i < 5; ++i) {
-      memset(output_thread, 0, width * height * sizeof(int));
-        double startTime = CycleTimer::currentSeconds();
-        mandelbrotThread(numThreads, x0, y0, x1, y1, width, height, maxIterations, output_thread);
-        double endTime = CycleTimer::currentSeconds();
-        minThread = std::min(minThread, endTime - startTime);
+            delete[] output_serial;
+            delete[] output_thread;
+
+            return 1;
+        }
+
+        // compute speedup
+        // printf("\t\t\t\t(%.2fx speedup from %d threads)\n", minSerial/minThread, numThreads);
+        printf("%d,%.3f,%.2f\n", numThreads, minThread * 1000, minSerial / minThread);
     }
+    
 
-    printf("[mandelbrot thread]:\t\t[%.3f] ms\n", minThread * 1000);
-    writePPMImage(output_thread, width, height, "mandelbrot-thread.ppm", maxIterations);
-
-    if (! verifyResult (output_serial, output_thread, width, height)) {
-        printf ("Error : Output from threads does not match serial output\n");
-
-        delete[] output_serial;
-        delete[] output_thread;
-
-        return 1;
-    }
-
-    // compute speedup
-    printf("\t\t\t\t(%.2fx speedup from %d threads)\n", minSerial/minThread, numThreads);
-
+    
     delete[] output_serial;
     delete[] output_thread;
 
