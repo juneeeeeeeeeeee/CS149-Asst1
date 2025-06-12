@@ -142,7 +142,8 @@ int main(int argc, char** argv) {
     //
     // Run the threaded version
     //
-    for(;numThreads <= 8; numThreads++)
+    
+    for(;numThreads <= 16; numThreads++)
     {
         double minThread = 1e30;
         for (int i = 0; i < 5; ++i) {
@@ -152,9 +153,9 @@ int main(int argc, char** argv) {
             double endTime = CycleTimer::currentSeconds();
             minThread = std::min(minThread, endTime - startTime);
         }
-        /*printf("[mandelbrot thread]:\t\t[%.3f] ms\n", minThread * 1000);
+        /*printf("[mandelbrot thread]:\t\t[%.3f] ms\n", minThread * 1000);*/
         writePPMImage(output_thread, width, height, "mandelbrot-thread.ppm", maxIterations);
-        */
+        
         if (! verifyResult (output_serial, output_thread, width, height)) {
             printf ("Error : Output from threads does not match serial output\n");
 
@@ -169,6 +170,7 @@ int main(int argc, char** argv) {
         printf("%d,%.3f,%.2f\n", numThreads, minThread * 1000, minSerial / minThread);
     }
     
+
 
     
     delete[] output_serial;
