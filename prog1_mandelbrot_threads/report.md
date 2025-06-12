@@ -33,10 +33,14 @@ Wrote image file mandelbrot—thread.ppm (1.82x speedup frm 2 threads)
 
 # Block을 이용한 2-8개 thread로 확장
 여러 개의 thread를 사용했을 때 speedup은 아래의 그래프와 같다. 
-![img](./speedup.png) 
+<p align = "center">
+<img src = "./speedup.png" width="50%" height="50%">
+</p>
 현재 사용중인 system은 4개의 core를 가지며, 하나의 core당 2개의 thread를 사용한다. 이때 speedup이 linear하지 않고, 쓰레드가 3개일 때 speedup이 감소함을 확인할 수 있다. 
 한편 view 2의 경우 speedup의 결과는 아래와 같다. 
-![img](./speedup_view2.png)
+<p align = "center">
+<img src = "./speedup_view2.png" width="50%" height="50%">
+</p>
 view 1에 비해 linear한 speedup이 있음을 확인할 수 있다. 
 
 View 2의 경우 `main()` 함수에서
@@ -125,7 +129,9 @@ void workerThreadStart(WorkerArgs * const args) {
 ```
 
 이때의 View 1 결과는 아래와 같다. 
-![img](./speedup_interleaved.png)
+<p align = "center">
+<img src = "./speedup_interleaved.png" width="50%" height="50%">
+</p>
 전체적으로 blocked 방식을 사용했을 때와 비교해 linear한 speedup을 보인다. 그러나 thread가 8개일 때 갑자기 speedup이 감소하며 원하는 speedup인 7-8배에 도달하지 못한다. 
 
 이를 확인하기 위해 각각의 thread에서 소요되는 시간을 측정해보았다. 
@@ -150,7 +156,9 @@ Thread 7 finished in 110.3851 milliseconds
 이는 두 가지 이유로 예상해 볼 수 있는데, 먼저 각 8개 thread에서 부동 소수점 연산을 위해 자원을 요구하여 서로 경합하기 때문이고, 또한 8개의 thread의 context switch overhead가 존재하기 때문이다. 
 
 한편 View 2의 경우 결과는 아래와 같다. 
-![img](./speedup_view2_interleaved.png)
+<p align = "center">
+<img src = "./speedup_view2_interleaved.png" width="50%" height="50%">
+</p>
 View 1과 비슷하게 speedup은 어느 정도 증가했으나 thread가 8개일 때 speedup이 감소하는 현상을 보이며, 이는 위와 비슷한 이유로 추정된다. 
 
 # 16개 thread
