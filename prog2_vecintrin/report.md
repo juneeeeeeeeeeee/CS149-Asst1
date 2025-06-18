@@ -111,3 +111,68 @@ Passed!!!
 `VECTOR_WIDTH`가 증가할 때 vector utilization이 감소함을 확인할 수 있다. 이는 `VECTOR_WIDTH`가 증가할수록 모든 벡터의 원소가 같은 방식으로 동작하지 않기 때문이다. 특히 while()문의 경우 하나의 원소라도 연산이 끝나지 않으면 계속 동작하는데, 이는 vector utilization을 감소시키는 주요한 원인이 된다. 
 
 # `arraySumSerial` 함수 벡터화
+다음과 같이 코드를 수정했다. 
+```cpp
+float arraySumVector(float* values, int N) {
+  
+  //
+  // CS149 STUDENTS TODO: Implement your vectorized version of arraySumSerial here
+  //
+  __cs149_vec_float partial_sum = _cs149_vset_float(0.f);
+  __cs149_mask maskAll;
+  float total_sum = 0.f;
+  for (int i=0; i<N; i+=VECTOR_WIDTH) {
+    // All ones
+    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(N-i);
+    else maskAll = _cs149_init_ones();
+    _cs149_vload_float(partial_sum, values+i, maskAll);
+    for(int k=0;k<log2(VECTOR_WIDTH);k++)
+    {
+      _cs149_hadd_float(partial_sum, partial_sum);
+      _cs149_interleave_float(partial_sum, partial_sum);
+    }
+    total_sum += partial_sum.value[0];
+  }
+  return total_sum;
+}
+```
+우선 함수 `_cs149_hadd_float()` 함수를 보면
+```cpp
+void _cs149_hadd(__cs149_vec<T> &vecResult, __cs149_vec<T> &vec) {
+  for (int i=0; i<VECTOR_WIDTH/2; i++) {
+    T result = vec.value[2*i] + vec.value[2*i+1];
+    vecResult.value[2 * i] = result;
+    vecResult.value[2 * i + 1] = result;
+  }
+}
+```
+vector에서 인접한 원소들의 합을 구해 다시 해당 원소에 값을 넣음을 확인할 수 있다. 이를 $\log_2 \text{VECTOR\_WIDTH}$번 반복하면 `partial_sum`을 구할 수 있을 것이다. 
+($\log_2$ 함수는 `math.h` 헤더에 존재한다. )
+이때 vector에서 인접한 원소들의 합을 구해야 하므로 이를 재배열하는 과정이 필요하다. 여기서 `_cs149_interleave_float()` 함수를 보면
+```cpp
+void _cs149_interleave(__cs149_vec<T> &vecResult, __cs149_vec<T> &vec) {
+  for (int i=0; i<VECTOR_WIDTH; i++) {
+    int index = i < VECTOR_WIDTH/2 ? (2 * i) : (2 * (i - VECTOR_WIDTH/2) + 1);
+    vecResult.value[i] = vec.value[index];
+  }
+}
+```
+위와 같이 vector를 `_cs149_hadd_float` 함수에 넣기 좋게 재배열해주고 있음을 알 수 있다. 예를 들어 `VECTOR_WIDTH`가 4일 때 for문 안은 아래와 같이 펼쳐진다. 
+```
+vecResult.value[0] = vec.value[0];
+vecResult.value[1] = vec.value[2];
+vecResult.value[2] = vec.value[1];
+vecResult.value[3] = vec.value[3];
+```
+이때
+```
+ARRAY SUM (bonus) 
+Passed!!!
+```
+구현이 잘 되었음을 확인할 수 있다. 
+여기서 주의할 점으로는 위의 펼쳐진 for문에서 보듯 
+```
+vecResult.value[1] = vec.value[2];
+vecResult.value[2] = vec.value[1];
+```
+함수 안에 같은 벡터 `partial_sum`을 넣어 `partial_sum[2]`의 값은 사라진다. 이때 합한 값은 앞쪽으로 모이고 있음을 알 수 있는데, 따라서 `partial_sum[0]`의 값만을 사용해야 한다. 

@@ -189,7 +189,7 @@ void absVector(float* values, float* output, int N) {
   for (int i=0; i<N; i+=VECTOR_WIDTH) {
 
     // All ones
-    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(i+VECTOR_WIDTH-N);
+    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(N-i);
     else maskAll = _cs149_init_ones();
 
     // All zeros
@@ -255,7 +255,6 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
   __cs149_vec_float result;
   __cs149_vec_int zero_int = _cs149_vset_int(0);
   __cs149_vec_int one_int = _cs149_vset_int(1);
-  // __cs149_vec_float one_float = _cs149_vset_float(1.f);
   __cs149_vec_float clamping_float = _cs149_vset_float(9.999999f);
   __cs149_vec_int count;
   __cs149_mask maskAll, maskIsZero, maskIsNotZero, maskIsClamped;
@@ -302,11 +301,21 @@ float arraySumVector(float* values, int N) {
   //
   // CS149 STUDENTS TODO: Implement your vectorized version of arraySumSerial here
   //
-  
+  __cs149_vec_float partial_sum = _cs149_vset_float(0.f);
+  __cs149_mask maskAll;
+  float total_sum = 0.f;
   for (int i=0; i<N; i+=VECTOR_WIDTH) {
-
+    // All ones
+    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(N-i);
+    else maskAll = _cs149_init_ones();
+    _cs149_vload_float(partial_sum, values+i, maskAll);
+    for(int k=0;k<log2(VECTOR_WIDTH);k++)
+    {
+      _cs149_hadd_float(partial_sum, partial_sum);
+      _cs149_interleave_float(partial_sum, partial_sum);
+    }
+    total_sum += partial_sum.value[0];
   }
-
-  return 0.0;
+  return total_sum;
 }
 
