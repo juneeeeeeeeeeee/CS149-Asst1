@@ -1,0 +1,113 @@
+# `clampedExpSerial` 함수 벡터화
+다음과 같이 코드를 수정했다. 
+```cpp
+void clampedExpVector(float* values, int* exponents, float* output, int N) {
+  __cs149_vec_float x;
+  __cs149_vec_int y;
+  __cs149_vec_float result;
+  __cs149_vec_int zero_int = _cs149_vset_int(0);
+  __cs149_vec_int one_int = _cs149_vset_int(1);
+  __cs149_vec_float clamping_float = _cs149_vset_float(9.999999f);
+  __cs149_vec_int count;
+  __cs149_mask maskAll, maskIsZero, maskIsNotZero, maskIsClamped;
+  for(int i=0;i<N;i+=VECTOR_WIDTH)
+  {
+    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(N-i);
+    else maskAll = _cs149_init_ones();
+    _cs149_vload_float(x, values+i, maskAll);
+    _cs149_vload_int(y, exponents+i, maskAll);
+    
+    _cs149_veq_int(maskIsZero, y, zero_int, maskAll); // if(y == 0)
+    _cs149_vset_float(result, 1.f, maskIsZero); // result = 1.f
+    _cs149_vgt_int(maskIsNotZero, y, zero_int, maskAll);
+    // else
+    _cs149_vmove_float(result, x, maskIsNotZero); // result = x
+    _cs149_vsub_int(count, y, one_int, maskIsNotZero); // count = y - 1
+    while(_cs149_cntbits(maskIsNotZero))
+    {
+      _cs149_vgt_int(maskIsNotZero, count, zero_int, maskIsNotZero);
+      _cs149_vmult_float(result, result, x, maskIsNotZero); // result *= y
+      _cs149_vsub_int(count, count, one_int, maskIsNotZero); // count -= 1
+    }
+    _cs149_vgt_float(maskIsClamped, result, clamping_float, maskAll); // if (result > 9.99999f)
+    _cs149_vmove_float(result, clamping_float, maskIsClamped); // result = 9.999999f
+    _cs149_vstore_float(output+i, result, maskAll); // output[i] = result
+  }
+}
+```
+N이 VECTOR_WIDTH로 나누어떨어지지 않는 경우에는 `maskAll` 마스크를 초기화하는 `_cs149_init_ones()_` 함수를 이용했다. 
+
+```cpp
+__cs149_mask _cs149_init_ones(int first) {
+  __cs149_mask mask;
+  for (int i=0; i<VECTOR_WIDTH; i++) {
+    mask.value[i] = (i<first) ? true : false;
+  }
+  return mask;
+}
+```
+N % VECTOR_WIDTH를 `first` 변수로 넘겨주면 남은 mask는 그대로 비운다. 이때 나머지 연산은 cost가 크므로 빼기 연산을 이용해 값을 구해주었다. 
+```cpp
+if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(N-i);
+else maskAll = _cs149_init_ones();
+```
+다음으로 while문을 구현하기 위해 `_cs149_cntbits()` 함수를 이용하였다. 
+```cpp
+int _cs149_cntbits(__cs149_mask &maska) {
+  int count = 0;
+  for (int i=0; i<VECTOR_WIDTH; i++) {
+    if (maska.value[i]) count++;
+  }
+  CS149Logger.addLog("cntbits", _cs149_init_ones(), VECTOR_WIDTH);
+  return count;
+}
+```
+이 함수는 마스크의 1의 개수를 센다. 현재 실행중인 vector의 각 원소가 전부 완료되어야 하므로 `maskIsNotZero` 마스크를 `_cs149_cntbits()` 함수의 입력으로 주었다. 
+```cpp
+while(_cs149_cntbits(maskIsNotZero))
+{
+    _cs149_vgt_int(maskIsNotZero, count, zero_int, maskIsNotZero);
+    _cs149_vmult_float(result, result, x, maskIsNotZero); // result *= y
+    _cs149_vsub_int(count, count, one_int, maskIsNotZero); // count -= 1
+}
+```
+```
+Results matched with answer!
+****************** Printing Vector Unit Statistics *******************
+Vector Width:              4
+Total Vector Instructions: 163
+Vector Utilization:        72.4%
+Utilized Vector Lanes:     472
+Total Vector Lanes:        652
+************************ Result Verification *************************
+Passed!!!
+```
+결과가 잘 나옴을 확인할 수 있다. 
+
+한편 N = 5와 같이 `VECTOR_WIDTH`로 나누어떨어지지 않는 경우에도
+```
+Results matched with answer!
+****************** Printing Vector Unit Statistics *******************
+Vector Width:              4
+Total Vector Instructions: 53
+Vector Utilization:        63.7%
+Utilized Vector Lanes:     135
+Total Vector Lanes:        212
+************************ Result Verification *************************
+Passed!!!
+```
+결과가 잘 나옴을 확인할 수 있다. 
+
+# `VECTOR_WIDTH` 변경
+`./myexp -s 10000`을 실행하고, `VECTOR_WIDTH`를 2, 4, 8, 16으로 변경하였을 때의 결과는 아래와 같다. 
+
+|`VECTOR_WIDTH`|vector utilization|
+|:---:|:---:|
+|2|76.3%|
+|4|67%|
+|8|63.7%|
+|16|62.2%|
+
+`VECTOR_WIDTH`가 증가할 때 vector utilization이 감소함을 확인할 수 있다. 이는 `VECTOR_WIDTH`가 증가할수록 모든 벡터의 원소가 같은 방식으로 동작하지 않기 때문이다. 특히 while()문의 경우 하나의 원소라도 연산이 끝나지 않으면 계속 동작하는데, 이는 vector utilization을 감소시키는 주요한 원인이 된다. 
+
+# `arraySumSerial` 함수 벡터화

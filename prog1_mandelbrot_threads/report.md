@@ -63,6 +63,7 @@ View 2의 경우 `main()` 함수에서
 ```
 계산하는 영역을 바꾸는 것을 확인할 수 있다. 
 ![img](../handout-images/mandelbrot_viz.jpg)
+
 Mandelbrot 집합의 경우 수학적으로는 복소수 $c$에 대해 $z_{n+1}^2=z_n^2+c$ 연산을 반복적으로 수행하는데, 컴퓨터 연산의 경우 최대 연산 횟수를 정하고 반복하는 중 $(z_n)$의 절댓값이 4를 넘는 경우 발산한다고 표시하고, 그렇지 않고 최대 연산 횟수에 도달하는 경우 수렴한다고 표시한다. 
 ```cpp
 static inline int mandel(float c_re, float c_im, int count)

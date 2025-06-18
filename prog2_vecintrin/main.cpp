@@ -63,8 +63,8 @@ int main(int argc, char * argv[]) {
   clampedExpSerial(values, exponents, gold, N);
   clampedExpVector(values, exponents, output, N);
 
-  //absSerial(values, gold, N);
-  //absVector(values, output, N);
+  // absSerial(values, gold, N);
+  // absVector(values, output, N);
 
   printf("\e[1;31mCLAMPED EXPONENT\e[0m (required) \n");
   bool clampedCorrect = verifyResult(values, exponents, output, gold, N);
@@ -189,7 +189,8 @@ void absVector(float* values, float* output, int N) {
   for (int i=0; i<N; i+=VECTOR_WIDTH) {
 
     // All ones
-    maskAll = _cs149_init_ones();
+    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(i+VECTOR_WIDTH-N);
+    else maskAll = _cs149_init_ones();
 
     // All zeros
     maskIsNegative = _cs149_init_ones(0);
@@ -249,7 +250,38 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
   // Your solution should work for any value of
   // N and VECTOR_WIDTH, not just when VECTOR_WIDTH divides N
   //
-  
+  __cs149_vec_float x;
+  __cs149_vec_int y;
+  __cs149_vec_float result;
+  __cs149_vec_int zero_int = _cs149_vset_int(0);
+  __cs149_vec_int one_int = _cs149_vset_int(1);
+  // __cs149_vec_float one_float = _cs149_vset_float(1.f);
+  __cs149_vec_float clamping_float = _cs149_vset_float(9.999999f);
+  __cs149_vec_int count;
+  __cs149_mask maskAll, maskIsZero, maskIsNotZero, maskIsClamped;
+  for(int i=0;i<N;i+=VECTOR_WIDTH)
+  {
+    if(i+VECTOR_WIDTH > N) maskAll = _cs149_init_ones(N-i);
+    else maskAll = _cs149_init_ones();
+    _cs149_vload_float(x, values+i, maskAll);
+    _cs149_vload_int(y, exponents+i, maskAll);
+    
+    _cs149_veq_int(maskIsZero, y, zero_int, maskAll); // if(y == 0)
+    _cs149_vset_float(result, 1.f, maskIsZero); // result = 1.f
+    _cs149_vgt_int(maskIsNotZero, y, zero_int, maskAll);
+    // else
+    _cs149_vmove_float(result, x, maskIsNotZero); // result = x
+    _cs149_vsub_int(count, y, one_int, maskIsNotZero); // count = y - 1
+    while(_cs149_cntbits(maskIsNotZero))
+    {
+      _cs149_vgt_int(maskIsNotZero, count, zero_int, maskIsNotZero);
+      _cs149_vmult_float(result, result, x, maskIsNotZero); // result *= y
+      _cs149_vsub_int(count, count, one_int, maskIsNotZero); // count -= 1
+    }
+    _cs149_vgt_float(maskIsClamped, result, clamping_float, maskAll); // if (result > 9.99999f)
+    _cs149_vmove_float(result, clamping_float, maskIsClamped); // result = 9.999999f
+    _cs149_vstore_float(output+i, result, maskAll); // output[i] = result
+  }
 }
 
 // returns the sum of all elements in values
