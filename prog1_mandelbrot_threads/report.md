@@ -156,6 +156,8 @@ Thread 7 finished in 110.3851 milliseconds
 
 이는 두 가지 이유로 예상해 볼 수 있는데, 먼저 각 8개 thread에서 부동 소수점 연산을 위해 자원을 요구하여 서로 경합하기 때문이고, 또한 8개의 thread의 context switch overhead가 존재하기 때문이다. 
 
+한편 thread가 8개일 때 speedup이 확연히 줄어드는 것은 background에서 돌아가는 다른 process들이 있기 때문이라고 추측된다. 
+
 한편 View 2의 경우 결과는 아래와 같다. 
 <p align = "center">
 <img src = "./speedup_view2_interleaved.png" width="50%" height="50%">
@@ -163,4 +165,4 @@ Thread 7 finished in 110.3851 milliseconds
 View 1과 비슷하게 speedup은 어느 정도 증가했으나 thread가 8개일 때 speedup이 감소하는 현상을 보이며, 이는 위와 비슷한 이유로 추정된다. 
 
 # 16개 thread
-thread가 16개일 때도 8개일 때와 비교했을 때 speedup이 크게 없을 것이라고 예상할 수 있다. 
+thread가 16개일 때도 현재 환경에서는 8개일 때와 비교했을 때 speedup이 크게 없을 것이라고 예상할 수 있다. 
