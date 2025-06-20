@@ -10,7 +10,7 @@ Wrote image file mandelbrot-task-ispc.ppm
                                 (4.47x speedup from ISPC)
                                 (8.85x speedup from task ISPC)
 ```
-이때 실행하는 CPU는 intel의 Tiger Lake 아키텍쳐로, core 안에 2개의 8-wide vector ALU가 들어있다. 따라서 이상적으로는 총 16배의 speedup을 기대할 수 있다. 
+이때 실행하는 CPU는 intel의 Tiger Lake 아키텍쳐로, core 안에 2개의 8-wide vector ALU(256bit AVX2)가 들어있다. 따라서 이상적으로는 총 16배의 speedup을 기대할 수 있다. 
 
 그러나 실제 speedup은 이것보다 한참 적은 4.47배이다. 그 이유는, 우선 `output` 배열에 접근하는 메모리 overhead가 존재하기 때문이다. 또한 `mandelbrot` 함수는 prog1에서 보듯 내부 조건문이 존재하는데, 내부 조건문에 의해 병렬성이 훼손될 수 있다. 
 

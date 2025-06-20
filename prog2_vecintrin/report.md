@@ -35,7 +35,7 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
   }
 }
 ```
-N이 VECTOR_WIDTH로 나누어떨어지지 않는 경우에는 `maskAll` 마스크를 초기화하는 `_cs149_init_ones()_` 함수를 이용했다. 
+N이 VECTOR_WIDTH로 나누어떨어지지 않는 경우에는 `maskAll`의 나머지를 0으로 설정하는 `_cs149_init_ones()_` 함수를 이용했다. 
 
 ```cpp
 __cs149_mask _cs149_init_ones(int first) {
