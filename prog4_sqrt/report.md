@@ -1,3 +1,34 @@
+# `sqrtSerial()` 함수에 대한 분석
+아래는 `sqrtSerial()` 함수이다. 
+```cpp
+void sqrtSerial(int N,
+                float initialGuess,
+                float values[],
+                float output[])
+{
+
+    static const float kThreshold = 0.00001f;
+
+    for (int i=0; i<N; i++) {
+
+        float x = values[i];
+        float guess = initialGuess;
+
+        float error = fabs(guess * guess * x - 1.f);
+
+        while (error > kThreshold) {
+            guess = (3.f * guess - x * guess * guess * guess) * 0.5f;
+            error = fabs(guess * guess * x - 1.f);
+        }
+
+        output[i] = x * guess;
+    }
+}
+```
+해당하는 함수는 $\frac{1}{\sqrt{x}}$를 계산한 후 $x$를 곱해 $\sqrt{x}$를 얻는다. 이때 $\frac{1}{\sqrt{x}}$를 계산하기 위해 Newton's Method를 이용한다. 
+
+우선 $f(x)$를 $\frac{1}{x^2}-a$로 설정하고 ($a$는 원하는 값) 초기값 1부터 점화식 $x_{n+1}=x_n-\frac{f(x_n)}{f'(x_n)}$을 이용해 점차 $\frac{1}{\sqrt{a}}$에 가까워지는 값을 얻는다. $f(x)$를 미분하여 $f'(x)=-2x^{-3}$을 얻고 이를 위의 점화식에 대입해 $x_{n+1}=\frac{1}{2}(3x_n-ax_n^3)$을 얻는다. 이는 위의 구현과 일치한다. 
+
 # sqrt에서 ISPC 속도 향상
 ```
 [sqrt serial]:          [838.698] ms
@@ -50,3 +81,76 @@ gang 내부에 하나의 index만 연산이 오래 걸리는 경우 ISPC speedup
                                 (4.38x speedup from task ISPC)
 ```
 예상하는 결과와 일치함을 확인할 수 있다. (심지어 speedup이 1보다도 작다. )한편 task를 생성하는 경우에는 8개의 thread간에 load 밸런싱이 잘 맞아 speedup이 ISPC에 비해서는 잘 나옴을 확인할 수 있다. 
+
+# Intel AVX2 Intrinsics를 이용한 `sqrtVector()` 함수 작성
+작성한 `sqrtVector()` 함수는 아래와 같다. 
+```cpp
+void sqrtVector(int N,
+                float initialGuess,
+                float values[],
+                float output[])
+{
+    __m256 kThreshold_v = _mm256_set1_ps(0.00001f);
+    __m256 three_v = _mm256_set1_ps(3.0f);
+    __m256 one_v = _mm256_set1_ps(1.0f);
+    __m256 half_v = _mm256_set1_ps(0.5f);
+    for (int i=0; i<N; i+=8) {
+        __m256 x_v = _mm256_load_ps(values+i);
+        __m256 guess_v = _mm256_set1_ps(initialGuess);
+
+        __m256 term1_v = _mm256_mul_ps(guess_v, guess_v);
+        term1_v = _mm256_mul_ps(term1_v, x_v);
+        __m256 error_v = _mm256_sub_ps(term1_v, one_v);
+
+        // abs of floating point is not implemented idk why
+        const __m256 sign_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF));
+        error_v = _mm256_and_ps(error_v, sign_mask);
+
+        // mask
+        __m256 mask = _mm256_cmp_ps(error_v, kThreshold_v, _CMP_GT_OQ);
+        while(_mm256_movemask_ps(mask))
+        {
+            // AVX2 does not have floating point mask operation. PoroSad
+            __m256 term2_v = _mm256_mul_ps(three_v, guess_v);
+            __m256 term3_1_v = _mm256_mul_ps(x_v, guess_v);
+            __m256 term3_2_v = _mm256_mul_ps(guess_v, guess_v);
+            __m256 term3_v = _mm256_mul_ps(term3_1_v, term3_2_v);
+            guess_v = _mm256_sub_ps(term2_v, term3_v);
+            guess_v = _mm256_mul_ps(guess_v, half_v);
+
+            term1_v = _mm256_mul_ps(guess_v, guess_v);
+            term1_v = _mm256_mul_ps(term1_v, x_v);
+            error_v = _mm256_sub_ps(term1_v, one_v);
+            error_v = _mm256_and_ps(error_v, sign_mask);
+            mask = _mm256_cmp_ps(error_v, kThreshold_v, _CMP_GT_OQ);
+        }
+
+        __m256 final_output_v = _mm256_mul_ps(x_v, guess_v);
+        _mm256_store_ps(output + i, final_output_v);
+    }
+}
+```
+AVX2 intrinsics는 floating point에 대한 절댓값 연산을 지원하지 않아 mask를 만들어 해결하는 것이 유일한 방법이었다. 
+
+한편 정렬 제약으로 인해 `main.cpp`도 바꾸어주어야 했다. 
+```cpp
+    // float* values = new float[N];
+    // float* output = new float[N];
+    float* values;
+    float* output;
+    posix_memalign((void**)&values, 32, N*sizeof(float));
+    posix_memalign((void**)&output, 32, N*sizeof(float));
+```
+
+Makefile에 object file을 추가하고 CXXFLAGS에 -mavx2를 추가하여 make하였다. 
+결과는 아래와 같다. 
+```
+[sqrt serial]:          [848.706] ms
+[sqrt vector]:          [140.128] ms
+[sqrt ispc]:            [204.142] ms
+[sqrt task ispc]:       [38.101] ms
+                                (6.06x speedup from Vector)
+                                (4.16x speedup from ISPC)
+                                (22.28x speedup from task ISPC)
+```
+ISPC에 비해 더 좋은 speedup을 가짐을 확인할 수 있었다. 
