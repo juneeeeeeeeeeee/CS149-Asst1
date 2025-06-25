@@ -5,6 +5,7 @@ prog1_mandelbrot_threads/um2_interleaved.csv
 prog1_mandelbrot_threads/objs/
 prog1_mandelbrot_threads/mandelbrot-serial.ppm
 prog1_mandelbrot_threads/mandelbrot-thread.ppm
+prog1_mandelbrot_threads/mandelbrot
 prog2_vecintrin/CS149intrin.o
 prog2_vecintrin/logger.o
 prog2_vecintrin/myexp
