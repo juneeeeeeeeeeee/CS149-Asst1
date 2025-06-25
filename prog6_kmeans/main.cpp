@@ -13,6 +13,11 @@
 
 using namespace std;
 
+// extern double distTime;
+// extern double computeAssignmentsTime;
+// extern double computeCentroidsTime;
+// extern double computeCostTime;
+
 // Main compute functions
 extern void kMeansThread(double *data, double *clusterCentroids,
                       int *clusterAssignments, int M, int N, int K,
@@ -133,12 +138,17 @@ int main() {
   // Log the starting state of the algorithm
   logToFile("./start.log", SAMPLE_RATE, data, clusterAssignments,
             clusterCentroids, M, N, K);
-
+  
   double startTime = CycleTimer::currentSeconds();
   kMeansThread(data, clusterCentroids, clusterAssignments, M, N, K, epsilon);
   double endTime = CycleTimer::currentSeconds();
   printf("[Total Time]: %.3f ms\n", (endTime - startTime) * 1000);
 
+  // printf("[Dist Time]: %.3f ms\n", distTime * 1000);
+  // printf("[ComputeAssignments Time]: %.3f ms\n", computeAssignmentsTime * 1000);
+  // printf("[ComputeCentroids Time]: %.3f ms\n", computeCentroidsTime * 1000);
+  // printf("[ComputeCost Time]: %.3f ms\n", computeCostTime * 1000);
+  
   // Log the end state of the algorithm
   logToFile("./end.log", SAMPLE_RATE, data, clusterAssignments,
             clusterCentroids, M, N, K);
